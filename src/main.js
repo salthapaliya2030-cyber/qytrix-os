@@ -100,7 +100,15 @@ function render() {
   if(browserForm){
     const address=root.querySelector("#browser-url"), frame=root.querySelector("#browser-frame"), status=root.querySelector("#browser-status"), fallback=root.querySelector("#browser-fallback"), fallbackText=root.querySelector("#browser-fallback-text");
     const backStack=[], forwardStack=[]; let currentUrl=frame.src, scanTimer=null;
-    const normalize=value=>{const raw=value.trim();if(!raw)return "https://www.google.com/webhp?igu=1";if(/^https?:\/\//i.test(raw))return raw;if(/^[\w.-]+\.[a-z]{2,}(?::\d+)?(?:\/.*)?$/i.test(raw))return "https://"+raw;return "https://www.google.com/search?q="+encodeURIComponent(raw)};
+    const normalize=value=>{
+      let raw=value.trim();
+      if(!raw)return "https://www.google.com/webhp?igu=1";
+      // Accept the older Qytrix shorthand /?blooket.com as well as plain domains.
+      raw=raw.replace(/^\/?\?/, "");
+      if(/^https?:\/\//i.test(raw))return raw;
+      if(/^[\w.-]+\.[a-z]{2,}(?::\d+)?(?:\/.*)?$/i.test(raw))return "https://"+raw;
+      return "https://www.google.com/search?q="+encodeURIComponent(raw);
+    };
     const navigate=(value,record=true)=>{const url=normalize(value);if(record&&currentUrl&&url!==currentUrl)backStack.push(currentUrl);if(record)forwardStack.length=0;currentUrl=url;address.value=url;fallback.hidden=true;status.textContent="Checking display compatibility…";status.className="browser-status checking";clearTimeout(scanTimer);frame.src=url;scanTimer=setTimeout(()=>{status.textContent="Still checking · this site may be slow or block embedded viewing";status.className="browser-status warning";fallback.hidden=false;fallbackText.textContent="Qytrix cannot confirm whether this page allows embedding. You can open it in the current tab instead.";},9000)};
     browserForm.addEventListener("submit",e=>{e.preventDefault();navigate(address.value)});
     frame.addEventListener("load",()=>{clearTimeout(scanTimer);status.textContent="Page responded · embedded content may still be restricted";status.className="browser-status";fallback.hidden=false;fallbackText.textContent="If the page is blank or shows an error, the site may block embedded browsers.";});
