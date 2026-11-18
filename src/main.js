@@ -47,13 +47,16 @@ function openApp(id) {
 }
 function render() {
   root.innerHTML = `<main class="desktop wallpaper-${savedWallpaper}">
-    <header class="topbar"><div class="brand-mark">◈ <b>qytrix</b></div><div class="top-status">workspace <span>●</span> online</div><button class="top-clock" id="clock"></button></header>
+    <header class="topbar"><div class="brand-mark">◈ <b>qytrix</b></div><div class="top-status">workspace <span>●</span> online</div><div class="top-actions"><button class="fullscreen-button" id="fullscreen-button" title="Enter fullscreen">⛶ Fullscreen</button><button class="top-clock" id="clock"></button></div></header>
     <section class="desktop-icons">${apps.map(a => `<button class="desktop-icon" data-open="${a.id}"><span>${a.icon}</span><small>${a.name}</small></button>`).join("")}</section>
     <section class="window-layer">${state.windows.filter(w=>!w.minimized).map(w=>`<article class="app-window ${state.active===w.id?"focused":""}" data-window="${w.id}" style="left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px"><header class="window-title" data-drag="${w.id}"><span>${apps.find(a=>a.id===w.app).icon} ${w.title}</span><nav><button data-min="${w.id}" aria-label="Minimize">−</button><button data-max="${w.id}" aria-label="Maximize">□</button><button data-close="${w.id}" aria-label="Close">×</button></nav></header><div class="window-content">${appContent(w.app)}</div></article>`).join("")}</section>
     ${state.start ? `<aside class="start-menu"><div class="start-heading">Good to see you.</div><input placeholder="Search apps" id="app-search" />${apps.map(a=>`<button data-open="${a.id}">${a.icon} ${a.name}</button>`).join("")}</aside>` : ""}
     <footer class="taskbar"><button class="start-button" id="start-button">◈</button><div class="task-apps">${state.windows.map(w=>`<button class="${state.active===w.id?"selected":""}" data-task="${w.id}">${apps.find(a=>a.id===w.app).icon}</button>`).join("")}</div><div class="tray">⌁　◉　<span id="tray-clock"></span></div></footer>
   </main>`;
   updateClock();
+  const fullscreenButton = root.querySelector("#fullscreen-button");
+  if (fullscreenButton) fullscreenButton.onclick = async () => { try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); } catch { fullscreenButton.textContent = "Fullscreen unavailable"; } };
+  document.onfullscreenchange = () => { const b = root.querySelector("#fullscreen-button"); if (b) b.textContent = document.fullscreenElement ? "⛶ Exit fullscreen" : "⛶ Fullscreen"; };
   root.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{state.start=false;openApp(b.dataset.open)}));
   root.querySelector("#start-button").onclick=()=>{state.start=!state.start;render()};
   root.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>{state.windows=state.windows.filter(w=>w.id!==Number(b.dataset.close));render()});
