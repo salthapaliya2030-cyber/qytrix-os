@@ -24,32 +24,56 @@ function appContent(id) {
   return "<p>Welcome to Qytrix.</p>";
 }
 function safeCalculate(source) {
-  const tokens = source.match(/\\d+(?:\\.\\d+)?|[()+*/-]/g) || [];
-  if (tokens.join("") !== source.replace(/\\s/g, "")) throw new Error("Invalid input");
+  const compact = source.replace(/\s/g, "");
+  const tokens = compact.match(/\d+(?:\.\d+)?|[()+*/-]/g) || [];
+  if (!compact || tokens.join("") !== compact) throw new Error("Invalid input");
   let i = 0;
   function factor() {
     if (tokens[i] === "+") { i++; return factor(); }
     if (tokens[i] === "-") { i++; return -factor(); }
-    if (tokens[i] === "(") { i++; const n = expression(); if (tokens[i++] !== ")") throw new Error("Missing )"); return n; }
-    const n = Number(tokens[i++]); if (!Number.isFinite(n)) throw new Error("Number expected"); return n;
+    if (tokens[i] === "(") {
+      i++;
+      const n = expression();
+      if (tokens[i++] !== ")") throw new Error("Missing )");
+      return n;
+    }
+    const token = tokens[i++];
+    if (token === undefined || !/^\d+(?:\.\d+)?$/.test(token)) throw new Error("Number expected");
+    return Number(token);
   }
-  function term() { let n = factor(); while (tokens[i] === "*" || tokens[i] === "/") { const op=tokens[i++], r=factor(); n=op==="*"?n*r:n/r; } return n; }
-  function expression() { let n=term(); while (tokens[i] === "+" || tokens[i] === "-") { const op=tokens[i++], r=term(); n=op==="+"?n+r:n-r; } return n; }
-  const result=expression(); if(i!==tokens.length || !Number.isFinite(result)) throw new Error("Invalid calculation"); return result;
+  function term() {
+    let n = factor();
+    while (tokens[i] === "*" || tokens[i] === "/") {
+      const op = tokens[i++], r = factor();
+      n = op === "*" ? n * r : n / r;
+    }
+    return n;
+  }
+  function expression() {
+    let n = term();
+    while (tokens[i] === "+" || tokens[i] === "-") {
+      const op = tokens[i++], r = term();
+      n = op === "+" ? n + r : n - r;
+    }
+    return n;
+  }
+  const result = expression();
+  if (i !== tokens.length || !Number.isFinite(result)) throw new Error("Invalid calculation");
+  return Number.isInteger(result) ? result : Number(result.toPrecision(10));
 }
 function escapeHtml(value) { return value.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function openApp(id) {
   const existing = state.windows.find(w => w.app === id);
   if (existing) { existing.minimized = false; state.active = existing.id; render(); return; }
   const app = apps.find(a => a.id === id);
-  const win = { id: state.nextId++, app: id, title: app.name, x: 120 + state.windows.length * 28, y: 70 + state.windows.length * 24, w: id === "browser" ? 780 : 560, h: id === "browser" ? 540 : 420, minimized: false };
+  const win = { id: state.nextId++, app: id, title: app.name, x: 120 + state.windows.length * 28, y: 70 + state.windows.length * 24, w: id === "browser" ? 780 : 560, h: id === "browser" ? 540 : 420, minimized: false, maximized: false };
   state.windows.push(win); state.active = win.id; render();
 }
 function render() {
   root.innerHTML = `<main class="desktop wallpaper-${savedWallpaper}">
     <header class="topbar"><div class="brand-mark">◈ <b>qytrix</b></div><div class="top-status">workspace <span>●</span> online</div><div class="top-actions"><button class="fullscreen-button" id="fullscreen-button" title="Enter fullscreen">⛶ Fullscreen</button><button class="top-clock" id="clock"></button></div></header>
     <section class="desktop-icons">${apps.map(a => `<button class="desktop-icon" data-open="${a.id}"><span>${a.icon}</span><small>${a.name}</small></button>`).join("")}</section>
-    <section class="window-layer">${state.windows.filter(w=>!w.minimized).map(w=>`<article class="app-window ${state.active===w.id?"focused":""}" data-window="${w.id}" style="left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px"><header class="window-title" data-drag="${w.id}"><span>${apps.find(a=>a.id===w.app).icon} ${w.title}</span><nav><button data-min="${w.id}" aria-label="Minimize">−</button><button data-max="${w.id}" aria-label="Maximize">□</button><button data-close="${w.id}" aria-label="Close">×</button></nav></header><div class="window-content">${appContent(w.app)}</div></article>`).join("")}</section>
+    <section class="window-layer">${state.windows.filter(w=>!w.minimized).map(w=>`<article class="app-window ${state.active===w.id?"focused":""} ${w.maximized?"maximized":""}" data-window="${w.id}" style="left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px"><header class="window-title" data-drag="${w.id}"><span>${apps.find(a=>a.id===w.app).icon} ${w.title}</span><nav><button data-min="${w.id}" aria-label="Minimize">−</button><button data-max="${w.id}" aria-label="Maximize">□</button><button data-close="${w.id}" aria-label="Close">×</button></nav></header><div class="window-content">${appContent(w.app)}</div></article>`).join("")}</section>
     ${state.start ? `<aside class="start-menu"><div class="start-heading">Good to see you.</div><input placeholder="Search apps" id="app-search" />${apps.map(a=>`<button data-open="${a.id}">${a.icon} ${a.name}</button>`).join("")}</aside>` : ""}
     <footer class="taskbar"><button class="start-button" id="start-button">◈</button><div class="task-apps">${state.windows.map(w=>`<button class="${state.active===w.id?"selected":""}" data-task="${w.id}">${apps.find(a=>a.id===w.app).icon}</button>`).join("")}</div><div class="tray">⌁　◉　<span id="tray-clock"></span></div></footer>
   </main>`;
@@ -62,7 +86,12 @@ function render() {
   root.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>{state.windows=state.windows.filter(w=>w.id!==Number(b.dataset.close));render()});
   root.querySelectorAll("[data-min]").forEach(b=>b.onclick=()=>{const w=state.windows.find(w=>w.id===Number(b.dataset.min));w.minimized=true;render()});
   root.querySelectorAll("[data-task]").forEach(b=>b.onclick=()=>{const w=state.windows.find(w=>w.id===Number(b.dataset.task));w.minimized=!w.minimized;state.active=w.id;render()});
-  root.querySelectorAll("[data-max]").forEach(b=>b.onclick=()=>{const el=b.closest(".app-window");el.classList.toggle("maximized")});
+  root.querySelectorAll("[data-max]").forEach(b=>b.onclick=()=>{
+    const w=state.windows.find(x=>x.id===Number(b.dataset.max));
+    if(!w)return;
+    w.maximized=!w.maximized;
+    render();
+  });
   root.querySelectorAll(".app-window").forEach(el=>el.addEventListener("mousedown",()=>{state.active=Number(el.dataset.window);root.querySelectorAll(".app-window").forEach(x=>x.classList.remove("focused"));el.classList.add("focused")}));
   root.querySelectorAll("[data-drag]").forEach(bar=>bar.addEventListener("mousedown",e=>{if(e.target.closest("button"))return;const w=state.windows.find(x=>x.id===Number(bar.dataset.drag));const sx=e.clientX-w.x,sy=e.clientY-w.y;const move=ev=>{w.x=Math.max(0,ev.clientX-sx);w.y=Math.max(36,ev.clientY-sy);bar.closest(".app-window").style.left=w.x+"px";bar.closest(".app-window").style.top=w.y+"px"};const up=()=>{window.removeEventListener("mousemove",move);window.removeEventListener("mouseup",up)};window.addEventListener("mousemove",move);window.addEventListener("mouseup",up)}));
   const note=root.querySelector(".notes");if(note)note.addEventListener("input",()=>localStorage.setItem("qytrix-notes",note.value));
@@ -79,8 +108,77 @@ function render() {
     root.querySelector('[data-action="forward"]').onclick=()=>{if(!forwardStack.length)return;backStack.push(currentUrl);navigate(forwardStack.pop(),false)};
     root.querySelector('[data-action="open-current"]').onclick=()=>{location.assign(currentUrl)};
   }
-  const calc=root.querySelector(".calc-grid");if(calc){let expr="";calc.onclick=e=>{const k=e.target.dataset.key;if(!k)return;const d=root.querySelector("#calc-display");if(k==="C")expr="";else if(k==="="){try{expr=String(safeCalculate(expr.replaceAll("×","*").replaceAll("÷","/").replaceAll("−","-")))}catch{expr="Error"}}else expr+=k;d.textContent=expr||"0"}}
-  const terminal=root.querySelector("#terminal-input");if(terminal)terminal.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const out=root.querySelector("#terminal-output");const cmd=terminal.value.trim();out.innerHTML+="<p>guest@qytrix:~$ "+escapeHtml(cmd)+"</p><p>"+(cmd==="help"?"Available: help, date, clear, about":cmd==="date"?new Date().toString():cmd==="clear"?"":cmd==="about"?"Qytrix OS browser edition":"Command not found")+"</p>";terminal.value=""});
+  const calc=root.querySelector(".calc-grid");
+  if(calc){
+    let expr="";
+    const display=root.querySelector("#calc-display");
+    const press=k=>{
+      if(k==="C"){expr="";display.textContent="0";return;}
+      if(k==="="){
+        try{expr=String(safeCalculate(expr.replaceAll("×","*").replaceAll("÷","/").replaceAll("−","-")));display.textContent=expr;}
+        catch{display.textContent="Error";expr="";}
+        return;
+      }
+      if(!/^[0-9.+*/()−×÷-]$/.test(k))return;
+      expr+=k;
+      display.textContent=expr;
+    };
+    calc.addEventListener("click",e=>{const key=e.target.closest("[data-key]")?.dataset.key;if(key)press(key);});
+    calc.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();press("=");}else if(e.key==="Escape")press("C");});
+  }
+  const terminal=root.querySelector("#terminal-input");
+  if(terminal){
+    const out=root.querySelector("#terminal-output");
+    const addLine=(value,cls="")=>{
+      const p=document.createElement("p");
+      if(cls)p.className=cls;
+      p.textContent=value;
+      out.appendChild(p);
+    };
+    terminal.addEventListener("keydown",e=>{
+      if(e.key!=="Enter")return;
+      const cmd=terminal.value.trim();
+      terminal.value="";
+      if(!cmd)return;
+      addLine("guest@qytrix:~$ "+cmd);
+      const [verb,...args]=cmd.split(/\s+/);
+      const rest=args.join(" ");
+      switch(verb.toLowerCase()){
+        case "help":
+          addLine("Commands: help, clear, date, time, echo, about, whoami, pwd, ls, calc");
+          break;
+        case "clear":
+          out.replaceChildren();
+          break;
+        case "date":
+        case "time":
+          addLine(new Date().toString());
+          break;
+        case "echo":
+          addLine(rest);
+          break;
+        case "whoami":
+          addLine("guest");
+          break;
+        case "pwd":
+          addLine("/home/guest");
+          break;
+        case "ls":
+          addLine("Desktop  Documents  Downloads  Pictures");
+          break;
+        case "calc":
+          try{addLine(String(safeCalculate(rest)));}
+          catch{addLine("Usage: calc 12*(3+4)");}
+          break;
+        case "about":
+          addLine("Qytrix Terminal — built-in web workspace terminal. It does not run system shell commands.");
+          break;
+        default:
+          addLine("Command not found: "+verb+". Type help for available commands.");
+      }
+      out.scrollTop=out.scrollHeight;
+    });
+  }
   const search=root.querySelector("#app-search");if(search)search.addEventListener("input",()=>root.querySelectorAll(".start-menu [data-open]").forEach(b=>b.hidden=!b.textContent.toLowerCase().includes(search.value.toLowerCase())));
 }
 function updateClock(){const s=new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});const c=root.querySelector("#clock"),t=root.querySelector("#tray-clock");if(c)c.textContent=s;if(t)t.textContent=s}
