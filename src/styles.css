@@ -10,3 +10,13 @@ button:hover,.desktop-icon:hover{cursor:url("data:image/svg+xml,%3Csvg xmlns='ht
 .fullscreen-button{background:#ffffff12;border:1px solid #ffffff20;border-radius:8px;padding:6px 10px;color:#dce6ff;font-size:11px}
 .fullscreen-button:hover{background:#ffffff22}
 @media(max-width:650px){.fullscreen-button{padding:6px 8px}.top-actions{gap:6px}}
+
+
+/* Qytrix startup splash */
+.qytrix-intro{
+  position:fixed;inset:0;z-index:99999;display:grid;place-items:center;
+  overflow:hidden;background:#090d16;opacity:1;
+  transition:opacity .9s cubic-bezier(.22,.7,.2,1);
+}
+.qytrix-intro img{width:100%;height:100%;object-fit:cover;display:block}
+.qytrix-intro-fading{opacity:0;pointer-events:none}
