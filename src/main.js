@@ -23,6 +23,20 @@ function appContent(id) {
   if (id === "terminal") return `<div class="terminal"><p>Qytrix Terminal [web preview]</p><p>Type <b>help</b> to see available commands.</p><div class="terminal-line"><span>guest@qytrix:~$</span><input id="terminal-input" autocomplete="off" /></div><div id="terminal-output"></div></div>`;
   return "<p>Welcome to Qytrix.</p>";
 }
+function safeCalculate(source) {
+  const tokens = source.match(/\\d+(?:\\.\\d+)?|[()+*/-]/g) || [];
+  if (tokens.join("") !== source.replace(/\\s/g, "")) throw new Error("Invalid input");
+  let i = 0;
+  function factor() {
+    if (tokens[i] === "+") { i++; return factor(); }
+    if (tokens[i] === "-") { i++; return -factor(); }
+    if (tokens[i] === "(") { i++; const n = expression(); if (tokens[i++] !== ")") throw new Error("Missing )"); return n; }
+    const n = Number(tokens[i++]); if (!Number.isFinite(n)) throw new Error("Number expected"); return n;
+  }
+  function term() { let n = factor(); while (tokens[i] === "*" || tokens[i] === "/") { const op=tokens[i++], r=factor(); n=op==="*"?n*r:n/r; } return n; }
+  function expression() { let n=term(); while (tokens[i] === "+" || tokens[i] === "-") { const op=tokens[i++], r=term(); n=op==="+"?n+r:n-r; } return n; }
+  const result=expression(); if(i!==tokens.length || !Number.isFinite(result)) throw new Error("Invalid calculation"); return result;
+}
 function escapeHtml(value) { return value.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function openApp(id) {
   const existing = state.windows.find(w => w.app === id);
@@ -51,7 +65,7 @@ function render() {
   const note=root.querySelector(".notes");if(note)note.addEventListener("input",()=>localStorage.setItem("qytrix-notes",note.value));
   root.querySelectorAll("[data-wall]").forEach(b=>b.onclick=()=>{localStorage.setItem("qytrix-wallpaper",b.dataset.wall);location.reload()});
   const go=root.querySelector('[data-action="go"]');if(go)go.onclick=()=>{let v=root.querySelector("#browser-url").value.trim();if(!/^https?:\/\//i.test(v))v="https://duckduckgo.com/?q="+encodeURIComponent(v);root.querySelector("iframe").src=v};
-  const calc=root.querySelector(".calc-grid");if(calc){let expr="";calc.onclick=e=>{const k=e.target.dataset.key;if(!k)return;const d=root.querySelector("#calc-display");if(k==="C")expr="";else if(k==="="){try{expr=String(Function("return ("+expr.replaceAll("×","*").replaceAll("÷","/").replaceAll("−","-")+")")())}catch{expr="Error"}}else expr+=k;d.textContent=expr||"0"}}
+  const calc=root.querySelector(".calc-grid");if(calc){let expr="";calc.onclick=e=>{const k=e.target.dataset.key;if(!k)return;const d=root.querySelector("#calc-display");if(k==="C")expr="";else if(k==="="){try{expr=String(safeCalculate(expr.replaceAll("×","*").replaceAll("÷","/").replaceAll("−","-")))}catch{expr="Error"}}else expr+=k;d.textContent=expr||"0"}}
   const terminal=root.querySelector("#terminal-input");if(terminal)terminal.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const out=root.querySelector("#terminal-output");const cmd=terminal.value.trim();out.innerHTML+="<p>guest@qytrix:~$ "+escapeHtml(cmd)+"</p><p>"+(cmd==="help"?"Available: help, date, clear, about":cmd==="date"?new Date().toString():cmd==="clear"?"":cmd==="about"?"Qytrix OS browser edition":"Command not found")+"</p>";terminal.value=""});
   const search=root.querySelector("#app-search");if(search)search.addEventListener("input",()=>root.querySelectorAll(".start-menu [data-open]").forEach(b=>b.hidden=!b.textContent.toLowerCase().includes(search.value.toLowerCase())));
 }
