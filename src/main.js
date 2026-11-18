@@ -85,4 +85,26 @@ function render() {
 }
 function updateClock(){const s=new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});const c=root.querySelector("#clock"),t=root.querySelector("#tray-clock");if(c)c.textContent=s;if(t)t.textContent=s}
 render();
+
+// One-time Qytrix startup splash: show the supplied district screenshot, then
+// dissolve it to reveal the live desktop underneath.
+const intro = document.createElement("div");
+intro.className = "qytrix-intro";
+intro.setAttribute("role", "presentation");
+intro.innerHTML = '<img src="/qytrix-intro.webp" alt="" fetchpriority="high" />';
+root.appendChild(intro);
+const dismissIntro = () => {
+  window.setTimeout(() => {
+    intro.classList.add("qytrix-intro-fading");
+    window.setTimeout(() => intro.remove(), 950);
+  }, 2000);
+};
+const introImage = intro.querySelector("img");
+if (introImage.complete) dismissIntro();
+else {
+  introImage.addEventListener("load", dismissIntro, { once: true });
+  introImage.addEventListener("error", () => intro.remove(), { once: true });
+  // Never leave the desktop covered if the image request stalls.
+  window.setTimeout(() => { if (intro.isConnected) intro.remove(); }, 7000);
+}
 setInterval(updateClock,15000);
