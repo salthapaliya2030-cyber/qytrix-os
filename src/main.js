@@ -125,7 +125,7 @@ fillObstacles();
 
 function makePerson(x,z,shirt,kind=0,scale=1){
  const g=new THREE.Group();g.position.set(x,0,z);g.scale.setScalar(scale);
- const shirtMaterial=shirtMaterial;
+ const shirtMaterial=mat(shirt);
  cube(g,0,1.2,0,.72,.9,.42,shirtMaterial,true);
  cube(g,0,1.92,0,.58,.58,.58,M.skin,true);
  cube(g,-.14,2,.3,.07,.07,.035,M.black,false);cube(g,.14,2,.3,.07,.07,.035,M.black,false);
