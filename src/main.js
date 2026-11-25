@@ -1,216 +1,172 @@
 import "./styles.css";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js";
 
 const root = document.querySelector("#root");
-const apps = [
-  { id: "files", name: "File Explorer", icon: "📁" },
-  { id: "browser", name: "Qytrix Browser", icon: "🌐" },
-  { id: "notes", name: "Notes", icon: "📝" },
-  { id: "calculator", name: "Calculator", icon: "🧮" },
-  { id: "settings", name: "Settings", icon: "⚙️" },
-  { id: "terminal", name: "Terminal", icon: "⌘" }
-];
-
-const state = { windows: [], active: null, nextId: 1, menu: false, start: false };
-const savedNotes = localStorage.getItem("qytrix-notes") || "";
-const savedWallpaper = localStorage.getItem("qytrix-wallpaper") || "aurora";
-
-function appContent(id) {
-  if (id === "notes") return `<textarea class="notes" placeholder="Start writing...">${escapeHtml(savedNotes)}</textarea>`;
-  if (id === "calculator") return `<div class="calculator"><div class="calc-display" id="calc-display">0</div><div class="calc-grid">${["7","8","9","÷","4","5","6","×","1","2","3","−","0",".","C","+","="].map(k => `<button data-key="${k}">${k}</button>`).join("")}</div></div>`;
-  if (id === "files") return `<div class="file-view"><div class="file-toolbar"><strong>Home</strong><button data-action="new-folder">＋ New folder</button></div><div class="file-grid"><div class="file-item">📁 <span>Documents</span></div><div class="file-item">📁 <span>Pictures</span></div><div class="file-item">📁 <span>Downloads</span></div><div class="file-item">📄 <span>Welcome.txt</span></div></div><p class="muted">Your Qytrix files will live here. Local file storage is coming next.</p></div>`;
-  if (id === "browser") return `<div class="browser"><form class="browser-bar" id="browser-form"><button type="button" data-action="back" title="Back">←</button><button type="button" data-action="forward" title="Forward">→</button><input id="browser-url" value="https://www.google.com" aria-label="address or search" placeholder="Search Google or enter a website" /><button type="submit">Go</button></form><div class="browser-status" id="browser-status" role="status">Ready · Google search</div><iframe title="Qytrix browser" id="browser-frame" src="https://www.google.com/webhp?igu=1" referrerpolicy="strict-origin-when-cross-origin"></iframe><div class="browser-fallback" id="browser-fallback" hidden><span id="browser-fallback-text">This page may not allow embedding.</span><button type="button" data-action="open-current">Open in this tab</button></div><p class="muted browser-note">Qytrix tries the embedded view first. Some sites block embedding; browser security does not let a webpage reliably inspect or bypass those restrictions.</p></div>`;
-  if (id === "settings") return `<div class="settings"><h3>Personalization</h3><p>Choose your desktop atmosphere.</p><div class="wallpapers"><button data-wall="aurora">Aurora</button><button data-wall="night">Midnight</button><button data-wall="dusk">Dusk</button></div><h3>About Qytrix</h3><p>Qytrix OS · Browser edition</p><p class="muted">A desktop-style workspace that runs on the web.</p></div>`;
-  if (id === "terminal") return `<div class="terminal"><p>Qytrix Terminal [web preview]</p><p>Type <b>help</b> to see available commands.</p><div class="terminal-line"><span>guest@qytrix:~$</span><input id="terminal-input" autocomplete="off" /></div><div id="terminal-output"></div></div>`;
-  return "<p>Welcome to Qytrix.</p>";
-}
-function safeCalculate(source) {
-  const compact = source.replace(/\s/g, "");
-  const tokens = compact.match(/\d+(?:\.\d+)?|[()+*/-]/g) || [];
-  if (!compact || tokens.join("") !== compact) throw new Error("Invalid input");
-  let i = 0;
-  function factor() {
-    if (tokens[i] === "+") { i++; return factor(); }
-    if (tokens[i] === "-") { i++; return -factor(); }
-    if (tokens[i] === "(") {
-      i++;
-      const n = expression();
-      if (tokens[i++] !== ")") throw new Error("Missing )");
-      return n;
-    }
-    const token = tokens[i++];
-    if (token === undefined || !/^\d+(?:\.\d+)?$/.test(token)) throw new Error("Number expected");
-    return Number(token);
-  }
-  function term() {
-    let n = factor();
-    while (tokens[i] === "*" || tokens[i] === "/") {
-      const op = tokens[i++], r = factor();
-      n = op === "*" ? n * r : n / r;
-    }
-    return n;
-  }
-  function expression() {
-    let n = term();
-    while (tokens[i] === "+" || tokens[i] === "-") {
-      const op = tokens[i++], r = term();
-      n = op === "+" ? n + r : n - r;
-    }
-    return n;
-  }
-  const result = expression();
-  if (i !== tokens.length || !Number.isFinite(result)) throw new Error("Invalid calculation");
-  return Number.isInteger(result) ? result : Number(result.toPrecision(10));
-}
-function escapeHtml(value) { return value.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-function openApp(id) {
-  const existing = state.windows.find(w => w.app === id);
-  if (existing) { existing.minimized = false; state.active = existing.id; render(); return; }
-  const app = apps.find(a => a.id === id);
-  const win = { id: state.nextId++, app: id, title: app.name, x: 120 + state.windows.length * 28, y: 70 + state.windows.length * 24, w: id === "browser" ? 780 : 560, h: id === "browser" ? 540 : 420, minimized: false, maximized: false };
-  state.windows.push(win); state.active = win.id; render();
-}
-function render() {
-  root.innerHTML = `<main class="desktop wallpaper-${savedWallpaper}">
-    <header class="topbar"><div class="brand-mark">◈ <b>qytrix</b></div><div class="top-status">workspace <span>●</span> online</div><div class="top-actions"><button class="fullscreen-button" id="fullscreen-button" title="Enter fullscreen">⛶ Fullscreen</button><button class="top-clock" id="clock"></button></div></header>
-    <section class="desktop-icons">${apps.map(a => `<button class="desktop-icon" data-open="${a.id}"><span>${a.icon}</span><small>${a.name}</small></button>`).join("")}</section>
-    <section class="window-layer">${state.windows.filter(w=>!w.minimized).map(w=>`<article class="app-window ${state.active===w.id?"focused":""} ${w.maximized?"maximized":""}" data-window="${w.id}" style="left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px"><header class="window-title" data-drag="${w.id}"><span>${apps.find(a=>a.id===w.app).icon} ${w.title}</span><nav><button data-min="${w.id}" aria-label="Minimize">−</button><button data-max="${w.id}" aria-label="Maximize">□</button><button data-close="${w.id}" aria-label="Close">×</button></nav></header><div class="window-content">${appContent(w.app)}</div></article>`).join("")}</section>
-    ${state.start ? `<aside class="start-menu"><div class="start-heading">Good to see you.</div><input placeholder="Search apps" id="app-search" />${apps.map(a=>`<button data-open="${a.id}">${a.icon} ${a.name}</button>`).join("")}</aside>` : ""}
-    <footer class="taskbar"><button class="start-button" id="start-button">◈</button><div class="task-apps">${state.windows.map(w=>`<button class="${state.active===w.id?"selected":""}" data-task="${w.id}">${apps.find(a=>a.id===w.app).icon}</button>`).join("")}</div><div class="tray">⌁　◉　<span id="tray-clock"></span></div></footer>
+root.innerHTML = `
+  <main id="game">
+    <canvas id="world"></canvas>
+    <div class="vignette"></div>
+    <header class="hud-top"><div class="brand">RUN FROM THE CHAOS <span>PARIS • 1789</span></div><div class="distance"><small>DISTANCE</small><b id="distance">0 m</b></div></header>
+    <div class="crosshair"><i></i><i></i></div>
+    <section class="mission"><div class="mission-tag">ESCAPE THE CITY</div><div class="mission-title">DON'T LOOK BACK.</div><p>Something is right behind you.</p></section>
+    <section class="bottom-hud"><div class="stamina-wrap"><div class="stamina-label"><span>STAMINA</span><b id="stamina-text">100%</b></div><div class="stamina-track"><div id="stamina-fill"></div></div></div><div class="hint" id="hint">WASD MOVE <b>•</b> SPACE JUMP <b>•</b> SHIFT SLIDE <b>•</b> MOUSE LOOK</div></section>
+    <div id="toast" class="toast">CLICK TO START</div>
+    <section id="menu" class="screen">
+      <div class="menu-card"><div class="eyebrow">A MULTIVERSE CHASE GAME</div><h1>PARIS<br><em>RUNAWAY.</em></h1><p>One city. A thousand weirdos. One very bad day.</p><button id="start">START RUN <span>→</span></button><div class="controls"><span>WASD / ARROWS <b>MOVE</b></span><span>SPACE <b>JUMP</b></span><span>SHIFT <b>SLIDE</b></span><span>ESC <b>PAUSE</b></span></div><small>BEST PLAYED IN FULLSCREEN • DESKTOP CONTROLS</small></div>
+    </section>
+    <section id="gameover" class="screen hidden"><div class="menu-card"><div class="eyebrow">THE CROWD CAUGHT UP</div><h1>RUN<br><em>ENDED.</em></h1><p id="final-score">You made it 0 meters.</p><button id="again">TRY AGAIN <span>↻</span></button></div></section>
+    <div id="pause" class="pause hidden">PAUSED <small>press esc to continue</small></div>
+    <div class="mobile-controls"><button data-move="left">←</button><button data-move="right">→</button><button data-move="jump">↑</button><button data-move="slide">↓</button></div>
   </main>`;
-  updateClock();
-  const fullscreenButton = root.querySelector("#fullscreen-button");
-  if (fullscreenButton) fullscreenButton.onclick = async () => { try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); } catch { fullscreenButton.textContent = "Fullscreen unavailable"; } };
-  document.onfullscreenchange = () => { const b = root.querySelector("#fullscreen-button"); if (b) b.textContent = document.fullscreenElement ? "⛶ Exit fullscreen" : "⛶ Fullscreen"; };
-  root.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{state.start=false;openApp(b.dataset.open)}));
-  root.querySelector("#start-button").onclick=()=>{state.start=!state.start;render()};
-  root.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>{state.windows=state.windows.filter(w=>w.id!==Number(b.dataset.close));render()});
-  root.querySelectorAll("[data-min]").forEach(b=>b.onclick=()=>{const w=state.windows.find(w=>w.id===Number(b.dataset.min));w.minimized=true;render()});
-  root.querySelectorAll("[data-task]").forEach(b=>b.onclick=()=>{const w=state.windows.find(w=>w.id===Number(b.dataset.task));w.minimized=!w.minimized;state.active=w.id;render()});
-  root.querySelectorAll("[data-max]").forEach(b=>b.onclick=()=>{
-    const w=state.windows.find(x=>x.id===Number(b.dataset.max));
-    if(!w)return;
-    w.maximized=!w.maximized;
-    render();
-  });
-  root.querySelectorAll(".app-window").forEach(el=>el.addEventListener("mousedown",()=>{state.active=Number(el.dataset.window);root.querySelectorAll(".app-window").forEach(x=>x.classList.remove("focused"));el.classList.add("focused")}));
-  root.querySelectorAll("[data-drag]").forEach(bar=>bar.addEventListener("mousedown",e=>{if(e.target.closest("button"))return;const w=state.windows.find(x=>x.id===Number(bar.dataset.drag));const sx=e.clientX-w.x,sy=e.clientY-w.y;const move=ev=>{w.x=Math.max(0,ev.clientX-sx);w.y=Math.max(36,ev.clientY-sy);bar.closest(".app-window").style.left=w.x+"px";bar.closest(".app-window").style.top=w.y+"px"};const up=()=>{window.removeEventListener("mousemove",move);window.removeEventListener("mouseup",up)};window.addEventListener("mousemove",move);window.addEventListener("mouseup",up)}));
-  const note=root.querySelector(".notes");if(note)note.addEventListener("input",()=>localStorage.setItem("qytrix-notes",note.value));
-  root.querySelectorAll("[data-wall]").forEach(b=>b.onclick=()=>{localStorage.setItem("qytrix-wallpaper",b.dataset.wall);location.reload()});
-  const browserForm=root.querySelector("#browser-form");
-  if(browserForm){
-    const address=root.querySelector("#browser-url"), frame=root.querySelector("#browser-frame"), status=root.querySelector("#browser-status"), fallback=root.querySelector("#browser-fallback"), fallbackText=root.querySelector("#browser-fallback-text");
-    const backStack=[], forwardStack=[]; let currentUrl=frame.src, scanTimer=null;
-    const normalize=value=>{
-      let raw=value.trim();
-      if(!raw)return "https://www.google.com/webhp?igu=1";
-      // Accept the older Qytrix shorthand /?blooket.com as well as plain domains.
-      raw=raw.replace(/^\/?\?/, "");
-      if(/^https?:\/\//i.test(raw))return raw;
-      if(/^[\w.-]+\.[a-z]{2,}(?::\d+)?(?:\/.*)?$/i.test(raw))return "https://"+raw;
-      return "https://www.google.com/search?q="+encodeURIComponent(raw);
-    };
-    const navigate=(value,record=true)=>{const url=normalize(value);if(record&&currentUrl&&url!==currentUrl)backStack.push(currentUrl);if(record)forwardStack.length=0;currentUrl=url;address.value=url;fallback.hidden=true;status.textContent="Checking display compatibility…";status.className="browser-status checking";clearTimeout(scanTimer);frame.src=url;scanTimer=setTimeout(()=>{status.textContent="Still checking · this site may be slow or block embedded viewing";status.className="browser-status warning";fallback.hidden=false;fallbackText.textContent="Qytrix cannot confirm whether this page allows embedding. You can open it in the current tab instead.";},9000)};
-    browserForm.addEventListener("submit",e=>{e.preventDefault();navigate(address.value)});
-    frame.addEventListener("load",()=>{clearTimeout(scanTimer);status.textContent="Page responded · embedded content may still be restricted";status.className="browser-status";fallback.hidden=false;fallbackText.textContent="If the page is blank or shows an error, the site may block embedded browsers.";});
-    root.querySelector('[data-action="back"]').onclick=()=>{if(!backStack.length)return;forwardStack.push(currentUrl);navigate(backStack.pop(),false)};
-    root.querySelector('[data-action="forward"]').onclick=()=>{if(!forwardStack.length)return;backStack.push(currentUrl);navigate(forwardStack.pop(),false)};
-    root.querySelector('[data-action="open-current"]').onclick=()=>{location.assign(currentUrl)};
-  }
-  const calc=root.querySelector(".calc-grid");
-  if(calc){
-    let expr="";
-    const display=root.querySelector("#calc-display");
-    const press=k=>{
-      if(k==="C"){expr="";display.textContent="0";return;}
-      if(k==="="){
-        try{expr=String(safeCalculate(expr.replaceAll("×","*").replaceAll("÷","/").replaceAll("−","-")));display.textContent=expr;}
-        catch{display.textContent="Error";expr="";}
-        return;
-      }
-      if(!/^[0-9.+*/()−×÷-]$/.test(k))return;
-      expr+=k;
-      display.textContent=expr;
-    };
-    calc.addEventListener("click",e=>{const key=e.target.closest("[data-key]")?.dataset.key;if(key)press(key);});
-    calc.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();press("=");}else if(e.key==="Escape")press("C");});
-  }
-  const terminal=root.querySelector("#terminal-input");
-  if(terminal){
-    const out=root.querySelector("#terminal-output");
-    const addLine=(value,cls="")=>{
-      const p=document.createElement("p");
-      if(cls)p.className=cls;
-      p.textContent=value;
-      out.appendChild(p);
-    };
-    terminal.addEventListener("keydown",e=>{
-      if(e.key!=="Enter")return;
-      const cmd=terminal.value.trim();
-      terminal.value="";
-      if(!cmd)return;
-      addLine("guest@qytrix:~$ "+cmd);
-      const [verb,...args]=cmd.split(/\s+/);
-      const rest=args.join(" ");
-      switch(verb.toLowerCase()){
-        case "help":
-          addLine("Commands: help, clear, date, time, echo, about, whoami, pwd, ls, calc");
-          break;
-        case "clear":
-          out.replaceChildren();
-          break;
-        case "date":
-        case "time":
-          addLine(new Date().toString());
-          break;
-        case "echo":
-          addLine(rest);
-          break;
-        case "whoami":
-          addLine("guest");
-          break;
-        case "pwd":
-          addLine("/home/guest");
-          break;
-        case "ls":
-          addLine("Desktop  Documents  Downloads  Pictures");
-          break;
-        case "calc":
-          try{addLine(String(safeCalculate(rest)));}
-          catch{addLine("Usage: calc 12*(3+4)");}
-          break;
-        case "about":
-          addLine("Qytrix Terminal — built-in web workspace terminal. It does not run system shell commands.");
-          break;
-        default:
-          addLine("Command not found: "+verb+". Type help for available commands.");
-      }
-      out.scrollTop=out.scrollHeight;
-    });
-  }
-  const search=root.querySelector("#app-search");if(search)search.addEventListener("input",()=>root.querySelectorAll(".start-menu [data-open]").forEach(b=>b.hidden=!b.textContent.toLowerCase().includes(search.value.toLowerCase())));
-}
-function updateClock(){const s=new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});const c=root.querySelector("#clock"),t=root.querySelector("#tray-clock");if(c)c.textContent=s;if(t)t.textContent=s}
-render();
 
-// One-time Qytrix startup splash: show the supplied district screenshot, then
-// dissolve it to reveal the live desktop underneath.
-const intro = document.createElement("div");
-intro.className = "qytrix-intro";
-intro.setAttribute("role", "presentation");
-intro.innerHTML = '<img src="/qytrix-intro.webp" alt="" fetchpriority="high" />';
-root.appendChild(intro);
-const dismissIntro = () => {
-  window.setTimeout(() => {
-    intro.classList.add("qytrix-intro-fading");
-    window.setTimeout(() => intro.remove(), 950);
-  }, 2000);
+const canvas = document.querySelector("#world");
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9aa8b2);
+scene.fog = new THREE.Fog(0x9aa8b2, 24, 155);
+const camera = new THREE.PerspectiveCamera(76, innerWidth / innerHeight, .1, 260);
+camera.position.set(0, 1.72, 5);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.12;
+scene.add(new THREE.HemisphereLight(0xdcecff, 0x514039, 2.0));
+const sun = new THREE.DirectionalLight(0xffd5a3, 2.1);
+sun.position.set(-16, 30, 12); sun.castShadow = true; sun.shadow.mapSize.set(1024,1024); scene.add(sun);
+
+const mat = (color, roughness=.9, metalness=0) => new THREE.MeshStandardMaterial({color,roughness,metalness});
+const materials = {
+ road:mat(0x34383a), stone:mat(0x8a8276), dark:mat(0x292b2d), plaster:mat(0xc2ad8d),
+ plaster2:mat(0x8d8a80), roof:mat(0x49494b), wood:mat(0x60432f), window:mat(0x263b46,.5),
+ fire: new THREE.MeshStandardMaterial({color:0xff6b19,emissive:0xff3b00,emissiveIntensity:2}),
+ gold:mat(0xd7a54b,.45), red:mat(0x9d2823), blue:mat(0x355a83), green:mat(0x496a49)
 };
-const introImage = intro.querySelector("img");
-if (introImage.complete) dismissIntro();
-else {
-  introImage.addEventListener("load", dismissIntro, { once: true });
-  introImage.addEventListener("error", () => intro.remove(), { once: true });
-  // Never leave the desktop covered if the image request stalls.
-  window.setTimeout(() => { if (intro.isConnected) intro.remove(); }, 7000);
+const boxGeo = new THREE.BoxGeometry(1,1,1);
+function cube(parent, x,y,z,sx,sy,sz, material, shadow=true) {
+ const m=new THREE.Mesh(boxGeo,material); m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=shadow;m.receiveShadow=true;parent.add(m);return m;
 }
-setInterval(updateClock,15000);
+const ground=cube(scene,0,-.35,-82,18,.7,190,materials.road); ground.receiveShadow=true;
+for(let x of [-9.2,9.2]) cube(scene,x,4,-82,.5,9,190,materials.stone,false);
+for(let x of [-5.5,5.5]) { cube(scene,x,.015,-82,.12,.03,190,mat(0xb9a88c),false); }
+for(let z=8;z>-175;z-=9){
+ for(const side of [-1,1]){
+  const width=3.1+Math.random()*1.5, height=7+Math.random()*7, depth=7+Math.random()*2;
+  const wallMat=Math.random()>.5?materials.plaster:materials.plaster2;
+  const building=new THREE.Group();building.position.set(side*(7.2+width/2),0,z);
+  cube(building,0,height/2,0,width,height,depth,wallMat);
+  cube(building,0,height+.18,0,width+.35,.35,depth+.35,materials.roof);
+  for(let yy=2.1;yy<height-1;yy+=2.6) for(let xx=-width/2+.7;xx<width/2-.3;xx+=1.35){
+    cube(building,xx,yy,depth/2+.025,.65,1.15,.08,materials.dark,false);
+    cube(building,xx,yy,depth/2+.075,.48,.88,.04,materials.window,false);
+    cube(building,xx,yy+.6,depth/2+.12,.8,.1,.2,materials.stone,false);
+  }
+  scene.add(building);
+ }
+}
+// street lamps, hanging flags and crates
+const props=[];
+for(let z=4;z>-180;z-=17){
+ for(const side of [-1,1]){
+  const x=side*5.8;
+  cube(scene,x,2.2,z,.13,4.4,.13,materials.dark);
+  cube(scene,x-side*.45,4.3,z,.95,.12,.12,materials.dark);
+  const glow=new THREE.PointLight(0xffb45d,.8,8);glow.position.set(x-side*.5,4,z);scene.add(glow);
+  if(Math.random()>.35){const crate=cube(scene,side*(3.6+Math.random()),.65,z-4,.9,1.3,.9,materials.wood);props.push(crate);}
+ }
+}
+// background skyline
+for(let i=0;i<30;i++){const h=12+Math.random()*24;cube(scene,(Math.random()-.5)*100,h/2,-100-Math.random()*100,5,h,5,materials.plaster2,false);}
+
+const player={lane:0,x:0,y:0,vy:0,speed:10,stamina:100,sliding:0,jumping:false,lookX:0,lookY:0};
+const obstacles=[];
+const obstacleGroup=new THREE.Group();scene.add(obstacleGroup);
+function makeObstacle(type,z,lane){
+ const g=new THREE.Group();g.position.set(lane*3,0,z);
+ if(type==="bike"){
+  const frame=mat(0x272a2b,.55,.3), wheel=mat(0x111315,.5);
+  for(const x of [-.65,.65]){const w=new THREE.Mesh(new THREE.TorusGeometry(.42,.07,8,16),wheel);w.position.set(x,.48,0);w.rotation.y=Math.PI/2;g.add(w);}
+  cube(g,0,.85,0,1.4,.09,.08,frame);cube(g,-.25,1.08,0,.08,.65,.08,frame);cube(g,.35,1.12,0,.08,.5,.08,frame);
+  const flame=new THREE.Mesh(new THREE.ConeGeometry(.38,1.2,8),materials.fire);flame.position.set(0,1.5,-.2);g.add(flame);
+  const light=new THREE.PointLight(0xff4b12,2,5);light.position.y=1.4;g.add(light);
+ }else if(type==="cart"){
+  cube(g,0,.65,0,1.8,.9,1.1,materials.wood);for(let x of [-.65,.65]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.13,12),materials.dark);w.rotation.z=Math.PI/2;w.position.set(x,.25,.35);g.add(w);}
+ }else if(type==="fire"){
+  cube(g,0,.12,0,1.6,.2,1.4,materials.dark);
+  for(let i=0;i<4;i++){const f=new THREE.Mesh(new THREE.ConeGeometry(.25+Math.random()*.2,1.5+Math.random(),7),materials.fire);f.position.set((Math.random()-.5)*1.1,.9,(Math.random()-.5)*.7);g.add(f);}
+  const l=new THREE.PointLight(0xff4b10,2.5,8);l.position.y=1.5;g.add(l);
+ }else{
+  cube(g,0,.8,0,2.3,1.6,.55,materials.stone);
+  cube(g,0,1.7,0,2.4,.18,.7,materials.red);
+ }
+ obstacleGroup.add(g);obstacles.push({group:g,type,lane,hit:false});
+}
+const types=["bike","cart","fire","barricade"];
+function fillObstacles(){for(let i=0;i<18;i++)makeObstacle(types[Math.floor(Math.random()*types.length)],-20-i*10,[-1,0,1][Math.floor(Math.random()*3)]);}
+fillObstacles();
+
+// Procedural chase crew: deliberately original cartoon silhouettes.
+const crowd=new THREE.Group();scene.add(crowd);
+function person(x,y,z,shirt,kind=0,scale=1){
+ const g=new THREE.Group();g.position.set(x,y,z);g.scale.setScalar(scale);
+ const body=mat(shirt), skin=mat(0xc58f69), pants=mat(0x252b35), cape=mat(kind===1?0x8d1e26:0x25202d);
+ cube(g,0,1.05,0,.65,.85,.4,body);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.27,12,10),skin);head.position.y=1.68;g.add(head);
+ cube(g,0,.42,0,.23,.8,.25,pants);
+ cube(g,-.42,1.05,0,.2,.75,.22,body);cube(g,.42,1.05,0,.2,.75,.22,body);
+ if(kind===1){const c=cube(g,0,1.05,.28,.8,1.15,.08,cape);c.rotation.x=-.15;}
+ if(kind===2){const hat=new THREE.Mesh(new THREE.ConeGeometry(.42,.7,8),materials.gold);hat.position.y=2.15;g.add(hat);}
+ if(kind===3){const ears=cube(g,0,1.9,0,.7,.16,.2,materials.dark);ears.position.y=1.92;}
+ crowd.add(g);return g;
+}
+const chasers=[
+ person(-1.2,0,-11,0x6b2c3c,1,1.15),person(.1,0,-12,0x304c8a,0,1.1),
+ person(1.35,0,-13,0x4e6d46,2,1.05),person(-2.1,0,-14,0x6c6c70,3,1.15),
+ person(2.1,0,-15,0x583c72,1,1.2),person(0,0,-17,0xa05c32,0,1.1)
+];
+const nameTags=["CAPE GUY","WIFI WIZARD","FROG KNIGHT","DISCOUNT CYBORG","SPACE TOURIST","DRAMATIC VAMPIRE"];
+// distant crowd extras
+for(let i=0;i<12;i++)person((Math.random()-.5)*8,0,-25-Math.random()*100,[0x6b2c3c,0x304c8a,0x4e6d46,0x8a7147][i%4],i%4,.8+Math.random()*.35);
+
+let running=false,paused=false,gameEnded=false,distance=0,last=performance.now(),elapsed=0,mouseLocked=false;
+const keys={};
+const $=id=>document.getElementById(id);
+function startRun(){distance=0;elapsed=0;player.lane=0;player.x=0;player.y=0;player.vy=0;player.stamina=100;player.sliding=0;gameEnded=false;obstacles.forEach(o=>obstacleGroup.remove(o.group));obstacles.length=0;fillObstacles();chasers.forEach((c,i)=>c.position.set([-1.2,.1,1.35,-2.1,2.1,0][i],0,-11-i));$("menu").classList.add("hidden");$("gameover").classList.add("hidden");$("pause").classList.add("hidden");running=true;paused=false;canvas.requestPointerLock?.();$("toast").textContent="RUN!";setTimeout(()=>$("toast").classList.add("fade"),1100);}
+function endRun(){running=false;gameEnded=true;document.exitPointerLock?.();$("final-score").textContent="You made it "+Math.floor(distance)+" meters."; $("gameover").classList.remove("hidden");}
+function setPause(){if(!running)return;paused=!paused;$("pause").classList.toggle("hidden",!paused);if(paused)document.exitPointerLock?.();else canvas.requestPointerLock?.();}
+$("start").onclick=startRun;$("again").onclick=startRun;
+document.addEventListener("pointerlockchange",()=>{mouseLocked=document.pointerLockElement===canvas;if(running&&!paused&&!mouseLocked)$("toast").classList.remove("fade");});
+document.addEventListener("mousemove",e=>{if(mouseLocked){player.lookX-=e.movementX*.0018;player.lookY=Math.max(-.35,Math.min(.35,player.lookY-e.movementY*.0014));}});
+document.addEventListener("keydown",e=>{keys[e.code]=true;if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code))e.preventDefault();if(e.code==="Escape"&&running)setPause();if(!running||paused)return;if(e.code==="ArrowLeft"||e.code==="KeyA")player.lane=Math.max(-1,player.lane-1);if(e.code==="ArrowRight"||e.code==="KeyD")player.lane=Math.min(1,player.lane+1);if(e.code==="Space"&&player.y<=.01&&!player.sliding){player.vy=8.5;}if(e.code==="ShiftLeft"||e.code==="ShiftRight")player.sliding=.75;});
+document.addEventListener("keyup",e=>keys[e.code]=false);
+document.querySelectorAll("[data-move]").forEach(b=>{const action=b.dataset.move;b.addEventListener("pointerdown",e=>{e.preventDefault();if(action==="left")player.lane=Math.max(-1,player.lane-1);if(action==="right")player.lane=Math.min(1,player.lane+1);if(action==="jump"&&player.y<=.01)player.vy=8.5;if(action==="slide")player.sliding=.75;});});
+canvas.addEventListener("click",()=>{if(running&&!paused&&!mouseLocked)canvas.requestPointerLock?.();});
+
+function update(dt){
+ if(!running||paused)return;
+ elapsed+=dt;distance+=dt*(player.speed+Math.min(8,elapsed*.12));
+ player.x=THREE.MathUtils.damp(player.x,player.lane*3,12,dt);
+ if(player.vy!==0||player.y>0){player.vy-=21*dt;player.y+=player.vy*dt;if(player.y<0){player.y=0;player.vy=0;}}
+ player.sliding=Math.max(0,player.sliding-dt);
+ const sprint=keys["ControlLeft"]||keys["ControlRight"];
+ if(sprint&&player.stamina>0){player.stamina=Math.max(0,player.stamina-25*dt);player.speed=13.5;}else{player.stamina=Math.min(100,player.stamina+13*dt);player.speed=10;}
+ camera.position.x=player.x*.72+player.lookX*1.8;
+ camera.position.y=1.72+player.y-(player.sliding>0?.65:0)+player.lookY;
+ camera.rotation.set(player.lookY*.35,player.lookX,0,"YXZ");
+ for(const o of obstacles){
+  o.group.position.z+=dt*(player.speed+Math.min(8,elapsed*.12));
+  if(!o.hit&&o.group.position.z>-.9&&o.group.position.z<1.3&&Math.abs(o.group.position.x-player.x)<1.55){
+   const safe=(o.type==="barricade"&&player.y>1.15)||(o.type!=="barricade"&&player.sliding>0);
+   if(!safe){o.hit=true;player.stamina=Math.max(0,player.stamina-38);distance=Math.max(0,distance-12);o.group.position.z=4;if(player.stamina<=0)endRun();}
+  }
+ }
+ for(const o of obstacles){if(o.group.position.z>9){o.group.position.z=-175-Math.random()*22;o.group.position.x=[-3,0,3][Math.floor(Math.random()*3)];o.lane=o.group.position.x/3;o.type=types[Math.floor(Math.random()*types.length)];}}
+ chasers.forEach((c,i)=>{c.position.z=-11-i*.8+Math.sin(elapsed*3+i)*.25+Math.min(5,elapsed*.025);c.position.x=THREE.MathUtils.damp(c.position.x,Math.sin(elapsed*1.7+i)*.55,2,dt);c.rotation.y=Math.sin(elapsed*2+i)*.12;});
+ if(elapsed>90)endRun();
+ $("distance").textContent=Math.floor(distance)+" m";$("stamina-fill").style.width=player.stamina+"%";$("stamina-text").textContent=Math.floor(player.stamina)+"%";
+}
+function animate(now){requestAnimationFrame(animate);const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);renderer.render(scene,camera);}
+requestAnimationFrame(animate);
+addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));});
