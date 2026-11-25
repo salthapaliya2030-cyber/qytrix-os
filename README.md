@@ -17,7 +17,8 @@ npm run build
 
 ## Controls
 
-- **WASD / arrow keys** — move between lanes
+- **W / S or up / down** — control forward pace
+- **A / D or left / right** — smoothly strafe across the street
 - **Space** — jump over low obstacles
 - **Shift** — slide under taller obstacles
 - **Ctrl** — sprint while stamina lasts
