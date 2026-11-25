@@ -164,7 +164,7 @@ function startRun(){
  $("distance").textContent="0 m";$("stamina-fill").style.width="100%";$("stamina-text").textContent="100%";
  $("menu").classList.add("hidden");$("gameover").classList.add("hidden");$("pause").classList.add("hidden");$("toast").classList.remove("fade");
  $("toast").textContent="RUN!";$("mission-sub").textContent="They're right behind you.";
- running=true;paused=false;canvas.requestPointerLock?.();
+ running=true;paused=false;if(matchMedia("(pointer:fine)").matches)canvas.requestPointerLock?.();
  setTimeout(()=>$("toast").classList.add("fade"),1300);
 }
 function endRun(won=false){
@@ -176,7 +176,7 @@ function endRun(won=false){
 }
 function setPause(){
  if(!running)return;paused=!paused;$("pause").classList.toggle("hidden",!paused);
- if(paused)document.exitPointerLock?.();else canvas.requestPointerLock?.();
+ if(paused)document.exitPointerLock?.();else if(matchMedia("(pointer:fine)").matches)canvas.requestPointerLock?.();
 }
 function jump(){if(player.y<=.01&&player.sliding<=0)player.vy=8.8;}
 function slide(){if(player.y<=.1)player.sliding=.82;}
@@ -213,7 +213,7 @@ document.querySelectorAll("[data-move]").forEach(b=>{
  });
  ["pointerup","pointercancel","lostpointercapture"].forEach(type=>b.addEventListener(type,release));
 });
-canvas.addEventListener("click",()=>{if(running&&!paused&&!mouseLocked)canvas.requestPointerLock?.();});
+canvas.addEventListener("click",e=>{if(e.pointerType!=="touch"&&running&&!paused&&!mouseLocked&&matchMedia("(pointer:fine)").matches)canvas.requestPointerLock?.();});
 let touchLookPointer=null,touchLookX=0,touchLookY=0;
 canvas.addEventListener("pointerdown",e=>{
  if(e.pointerType!=="touch"||!running||paused)return;
