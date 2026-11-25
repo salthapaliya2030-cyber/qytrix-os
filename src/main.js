@@ -2,7 +2,7 @@ import "./styles.css";
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js";
 
 const root = document.querySelector("#root");
-root.innerHTML = \`
+root.innerHTML = `
 <main id="game">
   <canvas id="world"></canvas><div class="vignette"></div><div id="damage-flash"></div>
   <header class="hud-top"><div class="brand">PARIS RUNAWAY <span>1789 • MULTIVERSE INCIDENT</span></div><div class="distance"><small>DISTANCE</small><b id="distance">0 m</b></div></header>
@@ -14,7 +14,7 @@ root.innerHTML = \`
   <section id="gameover" class="screen hidden"><div class="menu-card"><div class="eyebrow" id="end-eyebrow">THE CROWD CAUGHT UP</div><h1 id="end-title">RUN<br><em>ENDED.</em></h1><p id="final-score">You made it 0 meters.</p><button id="again">TRY AGAIN <span>↻</span></button></div></section>
   <div id="pause" class="pause hidden">PAUSED <small>press esc to continue</small></div>
   <div class="mobile-controls"><button data-move="left">←</button><button data-move="right">→</button><button data-move="jump">↑</button><button data-move="slide">↓</button></div>
-</main>\`;
+</main>`;
 
 const $ = id => document.getElementById(id);
 const canvas = $("world");
