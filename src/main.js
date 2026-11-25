@@ -74,6 +74,12 @@ function makeCityChunk(z){
    cube(building,xx,yy,depth/2+.085,.45,.86,.04,M.window,false);
    cube(building,xx,yy+.58,depth/2+.13,.76,.1,.18,M.stone,false);
   }
+  if(Math.random()>.42){
+   const flagX=(Math.random()-.5)*width*.38,flagY=height*.66,flagZ=depth/2+.13;
+   cube(building,flagX-.25,flagY,flagZ,.22,.72,.08,M.blue,false);
+   cube(building,flagX,flagY,flagZ,.22,.72,.08,M.white,false);
+   cube(building,flagX+.25,flagY,flagZ,.22,.72,.08,M.red,false);
+  }
   group.add(building);
   const lampX=side*5.8;
   cube(group,lampX,2.15,0,.13,4.3,.13,M.dark,false);
