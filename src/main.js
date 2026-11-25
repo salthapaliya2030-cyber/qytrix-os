@@ -148,11 +148,11 @@ const chasers=[
 const extras=[];
 for(let i=0;i<10;i++)extras.push(makePerson((Math.random()-.5)*8,-28-Math.random()*100,[0x6b2c3c,0x304c8a,0x4e6d46,0x8a7147][i%4],i%5,.78+Math.random()*.22));
 
-const player={lane:0,x:0,y:0,vx:0,vy:0,speed:10,stamina:100,sliding:0,lookX:0,lookY:0};
+const player={lane:0,x:0,y:0,vx:0,vy:0,speed:10,stamina:100,sliding:0,hitCooldown:0,lookX:0,lookY:0};
 let running=false,paused=false,distance=0,last=performance.now(),elapsed=0,mouseLocked=false;
 const keys={};
 function startRun(){
- distance=0;elapsed=0;player.lane=0;player.x=0;player.y=0;player.vx=0;player.vy=0;player.stamina=100;player.sliding=0;player.lookX=0;player.lookY=0;
+ distance=0;elapsed=0;player.lane=0;player.x=0;player.y=0;player.vx=0;player.vy=0;player.stamina=100;player.sliding=0;player.hitCooldown=0;player.lookX=0;player.lookY=0;
  obstacles.forEach(o=>obstacleGroup.remove(o.group));obstacles.length=0;fillObstacles();
  chasers.forEach((c,i)=>c.position.set([-1.4,.1,1.5,-2.1,2.1,0][i],0,11+i*2));
  $("distance").textContent="0 m";$("stamina-fill").style.width="100%";$("stamina-text").textContent="100%";
@@ -243,7 +243,7 @@ function update(dt){
  player.vx=THREE.MathUtils.damp(player.vx,strafe*8,14,dt);
  player.x=THREE.MathUtils.clamp(player.x+player.vx*dt,-5.7,5.7);
  if(player.vy!==0||player.y>0){player.vy-=22*dt;player.y+=player.vy*dt;if(player.y<0){player.y=0;player.vy=0;}}
- player.sliding=Math.max(0,player.sliding-dt);
+ player.sliding=Math.max(0,player.sliding-dt);\n player.hitCooldown=Math.max(0,player.hitCooldown-dt);
  const back=keys.KeyQ?Math.PI:0;
  const runBob=player.y===0&&player.sliding<=0?Math.sin(elapsed*travel*1.15)*.025:0;
  camera.position.set(player.x*.72+player.lookX*1.1,1.72+player.y-(player.sliding>0?.62:0)+player.lookY+runBob,0);
@@ -253,10 +253,10 @@ function update(dt){
  for(const chunk of cityChunks){chunk.position.z+=travel*dt;if(chunk.position.z>22)chunk.position.z-=198;}
  for(const o of obstacles){
   o.group.position.z+=travel*dt;
-  if(!o.hit&&o.group.position.z>-.9&&o.group.position.z<1.25&&Math.abs(o.group.position.x-player.x)<1.45){
+  if(!o.hit&&player.hitCooldown<=0&&o.group.position.z>-.9&&o.group.position.z<1.25&&Math.abs(o.group.position.x-player.x)<1.45){
    const safe=o.type==="barricade"?player.sliding>0:player.y>.82;
    if(!safe){
-    o.hit=true;player.stamina=Math.max(0,player.stamina-42);distance=Math.max(0,distance-10);
+    o.hit=true;player.hitCooldown=.72;player.stamina=Math.max(0,player.stamina-32);distance=Math.max(0,distance-6);
     $("damage-flash").classList.remove("flash");void $("damage-flash").offsetWidth;$("damage-flash").classList.add("flash");
     o.group.position.z=4;
     if(player.stamina<=0){endRun(false);return;}
