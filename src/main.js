@@ -243,7 +243,8 @@ function update(dt){
  player.vx=THREE.MathUtils.damp(player.vx,strafe*8,14,dt);
  player.x=THREE.MathUtils.clamp(player.x+player.vx*dt,-5.7,5.7);
  if(player.vy!==0||player.y>0){player.vy-=22*dt;player.y+=player.vy*dt;if(player.y<0){player.y=0;player.vy=0;}}
- player.sliding=Math.max(0,player.sliding-dt);\n player.hitCooldown=Math.max(0,player.hitCooldown-dt);
+ player.sliding=Math.max(0,player.sliding-dt);
+ player.hitCooldown=Math.max(0,player.hitCooldown-dt);
  const back=keys.KeyQ?Math.PI:0;
  const runBob=player.y===0&&player.sliding<=0?Math.sin(elapsed*travel*1.15)*.025:0;
  camera.position.set(player.x*.72+player.lookX*1.1,1.72+player.y-(player.sliding>0?.62:0)+player.lookY+runBob,0);
