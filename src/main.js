@@ -222,6 +222,13 @@ canvas.addEventListener("pointermove",e=>{
  touchLookPointer=null;
 }));
 
+function animateRunner(person,time,amount=.7){
+ const u=person.userData,p=time+u.phase;
+ u.leftArm.rotation.x=Math.sin(p)*amount;
+ u.rightArm.rotation.x=-Math.sin(p)*amount;
+ u.leftLeg.rotation.x=-Math.sin(p)*amount*.92;
+ u.rightLeg.rotation.x=Math.sin(p)*amount*.92;
+}
 function update(dt){
  if(!running||paused)return;
  elapsed+=dt;
@@ -263,11 +270,13 @@ function update(dt){
   c.position.z=11+i*1.8-Math.min(7.5,elapsed*.085)+Math.sin(elapsed*3+i)*.22;
   c.position.x=THREE.MathUtils.damp(c.position.x,[-1.4,.1,1.5,-2.1,2.1,0][i]+Math.sin(elapsed*1.4+i)*.35,3,dt);
   c.rotation.y=Math.sin(elapsed*2+i)*.1;
-  const u=c.userData,p=elapsed*travel*.5+u.phase;
-  u.leftArm.rotation.x=Math.sin(p)*.7;u.rightArm.rotation.x=-Math.sin(p)*.7;
-  u.leftLeg.rotation.x=-Math.sin(p)*.65;u.rightLeg.rotation.x=Math.sin(p)*.65;
+  animateRunner(c,elapsed*travel*.5);
  });
- extras.forEach(c=>{c.position.z+=travel*dt;if(c.position.z>18)c.position.z=-130-Math.random()*70;});
+ extras.forEach(c=>{
+  c.position.z+=travel*dt;
+  if(c.position.z>18)c.position.z=-130-Math.random()*70;
+  animateRunner(c,elapsed*travel*.42,.52);
+ });
  if(elapsed>=90){endRun(true);return;}
  $("distance").textContent=Math.floor(distance)+" m";
  $("stamina-fill").style.width=player.stamina+"%";$("stamina-text").textContent=Math.floor(player.stamina)+"%";
