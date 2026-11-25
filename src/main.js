@@ -193,8 +193,9 @@ document.addEventListener("keydown",e=>{
  keys[e.code]=true;
 });
 document.addEventListener("keyup",e=>{keys[e.code]=false;});
-addEventListener("blur",()=>{Object.keys(keys).forEach(k=>keys[k]=false);});
-document.addEventListener("visibilitychange",()=>{if(document.hidden&&running&&!paused)setPause();});
+function clearKeys(){Object.keys(keys).forEach(k=>keys[k]=false);}
+addEventListener("blur",clearKeys);
+document.addEventListener("visibilitychange",()=>{if(document.hidden){clearKeys();if(running&&!paused)setPause();}});
 const mobileMoveKeys={left:"KeyA",right:"KeyD"};
 document.querySelectorAll("[data-move]").forEach(b=>{
  let activeKey="";
