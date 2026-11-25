@@ -125,11 +125,12 @@ fillObstacles();
 
 function makePerson(x,z,shirt,kind=0,scale=1){
  const g=new THREE.Group();g.position.set(x,0,z);g.scale.setScalar(scale);
- cube(g,0,1.2,0,.72,.9,.42,mat(shirt),true);
+ const shirtMaterial=shirtMaterial;
+ cube(g,0,1.2,0,.72,.9,.42,shirtMaterial,true);
  cube(g,0,1.92,0,.58,.58,.58,M.skin,true);
  cube(g,-.14,2,.3,.07,.07,.035,M.black,false);cube(g,.14,2,.3,.07,.07,.035,M.black,false);
- const leftArm=new THREE.Group();leftArm.position.set(-.48,1.55,0);cube(leftArm,0,-.34,0,.24,.72,.25,mat(shirt),false);g.add(leftArm);
- const rightArm=new THREE.Group();rightArm.position.set(.48,1.55,0);cube(rightArm,0,-.34,0,.24,.72,.25,mat(shirt),false);g.add(rightArm);
+ const leftArm=new THREE.Group();leftArm.position.set(-.48,1.55,0);cube(leftArm,0,-.34,0,.24,.72,.25,shirtMaterial,false);g.add(leftArm);
+ const rightArm=new THREE.Group();rightArm.position.set(.48,1.55,0);cube(rightArm,0,-.34,0,.24,.72,.25,shirtMaterial,false);g.add(rightArm);
  const leftLeg=new THREE.Group();leftLeg.position.set(-.2,.78,0);cube(leftLeg,0,-.37,0,.28,.74,.32,M.pants,false);g.add(leftLeg);
  const rightLeg=new THREE.Group();rightLeg.position.set(.2,.78,0);cube(rightLeg,0,-.37,0,.28,.74,.32,M.pants,false);g.add(rightLeg);
  if(kind===1){const cape=cube(g,0,1.25,.27,.9,1.25,.08,M.red,false);cape.rotation.x=-.12;}
