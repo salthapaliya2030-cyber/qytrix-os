@@ -245,8 +245,9 @@ function update(dt){
  if(player.vy!==0||player.y>0){player.vy-=22*dt;player.y+=player.vy*dt;if(player.y<0){player.y=0;player.vy=0;}}
  player.sliding=Math.max(0,player.sliding-dt);
  const back=keys.KeyQ?Math.PI:0;
- camera.position.set(player.x*.72+player.lookX*1.1,1.72+player.y-(player.sliding>0?.62:0)+player.lookY,0);
- camera.rotation.set(player.lookY*.55,player.lookX+back,0,"YXZ");
+ const runBob=player.y===0&&player.sliding<=0?Math.sin(elapsed*travel*1.15)*.025:0;
+ camera.position.set(player.x*.72+player.lookX*1.1,1.72+player.y-(player.sliding>0?.62:0)+player.lookY+runBob,0);
+ camera.rotation.set(player.lookY*.55,player.lookX+back,-strafe*.025,"YXZ");
  const sway=Math.sin(elapsed*travel*.65)*.018;
  armLeft.rotation.z=sway;armRight.rotation.z=-sway;arms.visible=player.sliding<=0;
  for(const chunk of cityChunks){chunk.position.z+=travel*dt;if(chunk.position.z>22)chunk.position.z-=198;}
