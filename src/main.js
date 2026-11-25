@@ -147,11 +147,11 @@ const chasers=[
 const extras=[];
 for(let i=0;i<10;i++)extras.push(makePerson((Math.random()-.5)*8,-28-Math.random()*100,[0x6b2c3c,0x304c8a,0x4e6d46,0x8a7147][i%4],i%5,.78+Math.random()*.22));
 
-const player={lane:0,x:0,y:0,vy:0,speed:10,stamina:100,sliding:0,lookX:0,lookY:0};
+const player={lane:0,x:0,y:0,vx:0,vy:0,speed:10,stamina:100,sliding:0,lookX:0,lookY:0};
 let running=false,paused=false,distance=0,last=performance.now(),elapsed=0,mouseLocked=false;
 const keys={};
 function startRun(){
- distance=0;elapsed=0;player.lane=0;player.x=0;player.y=0;player.vy=0;player.stamina=100;player.sliding=0;player.lookX=0;player.lookY=0;
+ distance=0;elapsed=0;player.lane=0;player.x=0;player.y=0;player.vx=0;player.vy=0;player.stamina=100;player.sliding=0;player.lookX=0;player.lookY=0;
  obstacles.forEach(o=>obstacleGroup.remove(o.group));obstacles.length=0;fillObstacles();
  chasers.forEach((c,i)=>c.position.set([-1.4,.1,1.5,-2.1,2.1,0][i],0,11+i*2));
  $("distance").textContent="0 m";$("stamina-fill").style.width="100%";$("stamina-text").textContent="100%";
@@ -186,8 +186,6 @@ document.addEventListener("keydown",e=>{
  if(e.code==="Escape"&&running){setPause();return;}
  if(!running||paused)return;
  if(!keys[e.code]){
-  if(e.code==="ArrowLeft"||e.code==="KeyA")player.lane=Math.max(-1,player.lane-1);
-  if(e.code==="ArrowRight"||e.code==="KeyD")player.lane=Math.min(1,player.lane+1);
   if(e.code==="Space")jump();
   if(e.code==="ShiftLeft"||e.code==="ShiftRight")slide();
  }
@@ -211,9 +209,12 @@ function update(dt){
  player.speed=sprint&&player.stamina>0?13.5:10;
  if(sprint&&player.stamina>0)player.stamina=Math.max(0,player.stamina-24*dt);
  else player.stamina=Math.min(100,player.stamina+14*dt);
- const travel=player.speed+Math.min(7,elapsed*.08);
+ const forward=(keys.KeyW||keys.ArrowUp?2.5:0)-(keys.KeyS||keys.ArrowDown?3.5:0);
+ const travel=Math.max(5,player.speed+forward+Math.min(7,elapsed*.08));
  distance+=dt*travel;
- player.x=THREE.MathUtils.damp(player.x,player.lane*3,12,dt);
+ const strafe=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+ player.vx=THREE.MathUtils.damp(player.vx,strafe*8,14,dt);
+ player.x=THREE.MathUtils.clamp(player.x+player.vx*dt,-5.7,5.7);
  if(player.vy!==0||player.y>0){player.vy-=22*dt;player.y+=player.vy*dt;if(player.y<0){player.y=0;player.vy=0;}}
  player.sliding=Math.max(0,player.sliding-dt);
  const back=keys.KeyQ?Math.PI:0;
