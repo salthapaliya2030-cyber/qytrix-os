@@ -24,6 +24,7 @@ npm run build
 - **Ctrl** — sprint while stamina lasts
 - **Mouse** — look around after clicking Start
 - **Esc** — pause
+- **Touch** — drag across the scene to look; use the on-screen arrows to strafe, jump, and slide
 
 ## Notes
 
