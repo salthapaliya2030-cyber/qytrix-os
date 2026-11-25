@@ -1,8 +1,8 @@
-# Qytrix OS
+# Paris Runaway
 
-Qytrix OS is a browser-based desktop environment. It is designed to feel like a lightweight operating system while running as a normal website.
+A first-person 3D arcade chase game set in a chaotic, fictionalized version of revolutionary Paris. Built for the browser with Three.js and Vite.
 
-## Run locally
+## Play / develop
 
 ```bash
 npm install
@@ -15,20 +15,18 @@ npm run dev
 npm run build
 ```
 
-## Current prototype
+## Controls
 
-- Desktop, taskbar, Start menu, and live clock
-- Open, focus, minimize, maximize, close, and drag app windows
-- Notes saved in browser local storage
-- Calculator, File Explorer shell, Settings, and a basic terminal
-- In-app browser window (some sites block iframe embedding)
+- **WASD / arrow keys** — move between lanes
+- **Space** — jump over low obstacles
+- **Shift** — slide under taller obstacles
+- **Ctrl** — sprint while stamina lasts
+- **Mouse** — look around after clicking Start
+- **Esc** — pause
 
-## Important limitations
+## Notes
 
-A website cannot natively execute arbitrary Windows `.exe` or `.msi` files. That requires a separate Windows runtime or a compatible emulator. Qytrix will treat uploaded executables as untrusted and must not run them directly in the browser.
-
-## Structure
-
-- `src/main.js` — desktop shell and app-window behavior
-- `src/styles.css` — desktop and app styling
-- `public/` — static assets (wallpapers, icons, fonts)
+- The scene is rendered in real-time 3D using Three.js.
+- Three.js is loaded from jsDelivr, so the first load needs an internet connection.
+- The game uses original, stylized crowd characters and arcade obstacle interactions.
+- Designed to be lightweight enough for modern Chromebook browsers; lower the browser window size if performance drops.
