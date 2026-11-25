@@ -24,7 +24,7 @@ scene.fog = new THREE.Fog(0x91a4b1, 28, 145);
 const camera = new THREE.PerspectiveCamera(78, innerWidth / innerHeight, .1, 260);
 camera.position.set(0, 1.72, 0);
 const renderer = new THREE.WebGLRenderer({canvas, antialias:false, powerPreference:"high-performance"});
-renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.25));
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.1));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = false;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -291,5 +291,5 @@ function animate(now){
 requestAnimationFrame(animate);
 addEventListener("resize",()=>{
  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
- renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.25));
+ renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.1));
 });
