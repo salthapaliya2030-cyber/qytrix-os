@@ -194,11 +194,16 @@ document.addEventListener("keydown",e=>{
 document.addEventListener("keyup",e=>{keys[e.code]=false;});
 addEventListener("blur",()=>{Object.keys(keys).forEach(k=>keys[k]=false);});
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&running&&!paused)setPause();});
+const mobileMoveKeys={left:"KeyA",right:"KeyD"};
 document.querySelectorAll("[data-move]").forEach(b=>{
- b.addEventListener("pointerdown",e=>{e.preventDefault();if(!running||paused)return;const a=b.dataset.move;
-  if(a==="left")player.lane=Math.max(-1,player.lane-1);if(a==="right")player.lane=Math.min(1,player.lane+1);
+ let activeKey="";
+ const release=()=>{if(activeKey){keys[activeKey]=false;activeKey="";}};
+ b.addEventListener("pointerdown",e=>{
+  e.preventDefault();if(!running||paused)return;const a=b.dataset.move;
+  if(mobileMoveKeys[a]){activeKey=mobileMoveKeys[a];keys[activeKey]=true;b.setPointerCapture?.(e.pointerId);}
   if(a==="jump")jump();if(a==="slide")slide();
  });
+ ["pointerup","pointercancel","lostpointercapture"].forEach(type=>b.addEventListener(type,release));
 });
 canvas.addEventListener("click",()=>{if(running&&!paused&&!mouseLocked)canvas.requestPointerLock?.();});
 
