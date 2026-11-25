@@ -206,6 +206,20 @@ document.querySelectorAll("[data-move]").forEach(b=>{
  ["pointerup","pointercancel","lostpointercapture"].forEach(type=>b.addEventListener(type,release));
 });
 canvas.addEventListener("click",()=>{if(running&&!paused&&!mouseLocked)canvas.requestPointerLock?.();});
+let touchLookPointer=null,touchLookX=0,touchLookY=0;
+canvas.addEventListener("pointerdown",e=>{
+ if(e.pointerType!=="touch"||!running||paused)return;
+ touchLookPointer=e.pointerId;touchLookX=e.clientX;touchLookY=e.clientY;
+ canvas.setPointerCapture?.(e.pointerId);
+});
+canvas.addEventListener("pointermove",e=>{
+ if(touchLookPointer!==e.pointerId)return;
+ const dx=e.clientX-touchLookX,dy=e.clientY-touchLookY;touchLookX=e.clientX;touchLookY=e.clientY;
+ player.lookX-=dx*.004;player.lookY=THREE.MathUtils.clamp(player.lookY-dy*.003,-.28,.28);
+});
+["pointerup","pointercancel","lostpointercapture"].forEach(type=>canvas.addEventListener(type,()=>{
+ touchLookPointer=null;
+}));
 
 function update(dt){
  if(!running||paused)return;
