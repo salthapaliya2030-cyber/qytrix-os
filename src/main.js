@@ -26,7 +26,7 @@ camera.position.set(0, 1.72, 0);
 const renderer = new THREE.WebGLRenderer({canvas, antialias:false, powerPreference:"high-performance"});
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.25));
 renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = false;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -34,7 +34,7 @@ renderer.toneMappingExposure = 1.08;
 scene.add(new THREE.HemisphereLight(0xdcecff, 0x514039, 2.0));
 const sun = new THREE.DirectionalLight(0xffd5a3, 2.0);
 sun.position.set(-16, 30, 12);
-sun.castShadow = true;
+sun.castShadow = false;
 sun.shadow.mapSize.set(512,512);
 sun.shadow.camera.left=-22; sun.shadow.camera.right=22; sun.shadow.camera.top=28; sun.shadow.camera.bottom=-28;
 scene.add(sun);
@@ -42,7 +42,7 @@ scene.add(sun);
 const mat=(color,roughness=.9,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
 const M={
  road:mat(0x34383a), stone:mat(0x8a8276), dark:mat(0x292b2d), plaster:mat(0xc2ad8d),
- plaster2:mat(0x8d8a80), roof:mat(0x49494b), wood:mat(0x60432f), window:mat(0x263b46,.5),
+ plaster2:mat(0x8d8a80), roof:mat(0x49494b), wood:mat(0x60432f), window:mat(0x263b46,.5), lampGlow:new THREE.MeshStandardMaterial({color:0xffd39b,emissive:0xffa33a,emissiveIntensity:1.4}),
  fire:new THREE.MeshStandardMaterial({color:0xff6b19,emissive:0xff3b00,emissiveIntensity:2}),
  gold:mat(0xd7a54b,.45), red:mat(0x9d2823), blue:mat(0x355a83), green:mat(0x496a49),
  skin:mat(0xd39a73), pants:mat(0x252b35), white:mat(0xe7e3d7), black:mat(0x17191b)
@@ -78,7 +78,7 @@ function makeCityChunk(z){
   const lampX=side*5.8;
   cube(group,lampX,2.15,0,.13,4.3,.13,M.dark,false);
   cube(group,lampX-side*.42,4.25,0,.9,.12,.12,M.dark,false);
-  const glow=new THREE.PointLight(0xffb45d,.55,7);glow.position.set(lampX-side*.5,4,0);group.add(glow);
+  cube(group,lampX-side*.5,4,0,.46,.18,.28,M.lampGlow,false);
   if(Math.random()>.45)cube(group,side*(3.7+Math.random()*.5),.55,-2,.85,1.1,.85,M.wood,true);
  }
  scene.add(group);cityChunks.push(group);
@@ -101,14 +101,14 @@ function buildObstacle(type,z,lane){
   for(const x of [-.65,.65]){const w=new THREE.Mesh(new THREE.TorusGeometry(.42,.075,8,16),M.black);w.position.set(x,.48,0);w.rotation.y=Math.PI/2;g.add(w);}
   cube(g,0,.85,0,1.4,.09,.08,M.dark,false);cube(g,-.25,1.08,0,.08,.65,.08,M.dark,false);cube(g,.35,1.12,0,.08,.5,.08,M.dark,false);
   const flame=new THREE.Mesh(new THREE.ConeGeometry(.38,1.25,8),M.fire);flame.position.set(0,1.45,-.2);g.add(flame);
-  const light=new THREE.PointLight(0xff4b12,1.6,5);light.position.y=1.4;g.add(light);
+  const glow=new THREE.Mesh(new THREE.SphereGeometry(.24,8,6),M.fire);glow.position.y=1.4;g.add(glow);
  }else if(type==="cart"){
   cube(g,0,.65,0,1.8,.9,1.1,M.wood,true);
   for(const x of [-.65,.65]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.13,10),M.dark);w.rotation.z=Math.PI/2;w.position.set(x,.25,.35);g.add(w);}
  }else if(type==="fire"){
   cube(g,0,.12,0,1.6,.2,1.4,M.dark,false);
   for(let i=0;i<4;i++){const f=new THREE.Mesh(new THREE.ConeGeometry(.25+Math.random()*.2,1.5+Math.random(),7),M.fire);f.position.set((Math.random()-.5)*1.1,.9,(Math.random()-.5)*.7);g.add(f);}
-  const light=new THREE.PointLight(0xff4b10,2,7);light.position.y=1.5;g.add(light);
+  const glow=new THREE.Mesh(new THREE.SphereGeometry(.28,8,6),M.fire);glow.position.y=1.5;g.add(glow);
  }else{
   cube(g,0,1.05,0,2.5,2.1,.6,M.stone,true);
   cube(g,0,2.15,0,2.6,.18,.7,M.red,false);
